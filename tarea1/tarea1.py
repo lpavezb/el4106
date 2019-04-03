@@ -1,17 +1,12 @@
 #!/usr/bin/env python
 import numpy as np
+from matplotlib import pyplot as plt
 
 
 def split_data(dat):
     # g: 0
     # h: 1
-    g_len = 0
-    # find g class quantity (data is sorted by class)
-    for i in range(len(dat)):
-        if dat[i][10] == 1:
-            g_len = i
-            break
-
+    g_len = 12332
     g = np.array(dat[:g_len])  # g class data
     h = np.array(dat[g_len:])  # h class data
 
@@ -35,10 +30,21 @@ def split_data(dat):
 
 
 if __name__ == '__main__':
+    g = 12332
+    h = 6688
+    bins = 30
     data = np.genfromtxt('magic04_label.data', delimiter=',')
     test, train, train_by_class = split_data(data)
     hist_g = []
     hist_h = []
     for i in range(10):
-        hist_g.append(np.histogram(train_by_class[0][:, i], bins=30, density=True)[0])
-        hist_h.append(np.histogram(train_by_class[1][:, i], bins=30, density=True)[0])
+        hist_g.append(np.histogram(train_by_class[0][:, i], bins=bins, density=True)[0])
+        hist_h.append(np.histogram(train_by_class[1][:, i], bins=bins, density=True)[0])
+    p0 = g / (g + h)
+    p1 = h / (g + h)
+    p0x = p0
+    for i in range(10):
+        plt.subplot(5, 2, i)
+        plt.hist(train_by_class[0][:, i], bins=bins)
+        plt.title("x{}".format(i))
+    plt.show()
