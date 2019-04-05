@@ -75,17 +75,26 @@ if __name__ == '__main__':
     data = np.genfromtxt('magic04_label.data', delimiter=',')
     test, train, train_by_class, test_by_class = split_data(data)
     hist_g = []
+    edges_g = []
     hist_h = []
+    edges_h = []
     for i in range(10):
-        hist_g.append(histogram(train_by_class["g"][:, i], bins=bins))
-        hist_h.append(histogram(train_by_class["h"][:, i], bins=bins))
+        hist, edges = histogram(train_by_class["g"][:, i], bins=bins)
+        hist_g.append(hist)
+        edges_g.append(edges)
+        hist, edges = histogram(train_by_class["h"][:, i], bins=bins)
+        hist_h.append(hist)
+        edges_h.append(edges)
 
-    p0 = g / (g + h)
-    p1 = h / (g + h)
-    for caract in range(10):
-        p0 = p0 * hist_g[caract][0][find_bin(test_by_class["g"][0][caract], hist_g[0][1])]
+    p0 = 1
+    p1 = 1
+    for x in test_by_class["g"]:
+        for caract in range(10):
+            p0 = p0 * hist_g[caract][find_bin(x[caract], edges_g[caract])]
+        for caract in range(10):
+            p1 = p1 * hist_h[caract][find_bin(x[caract], edges_h[caract])]
 
-    for caract in range(10):
-        p1 = p1 * hist_h[caract][0][find_bin(test_by_class["h"][0][caract], hist_h[0][1])]
-
-    
+        if p0/p1 >= 2:
+            print("hadron")
+        else:
+            print("no hadron")
