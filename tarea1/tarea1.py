@@ -43,10 +43,29 @@ def plot(train_set, bins, title="train_set"):
 def find_bin(x, bin_edges):
     res = 0
     for edge in bin_edges[1:len(bin_edges)-1]:
-        if x <= edge:
+        if x < edge:
             return res
         res += 1
     return res
+
+
+def histogram(data, bins):
+    m = min(data)
+    M = max(data)
+    size = len(data)
+    step = (M - m) / bins
+    bin_edges = [m]
+    for i in range(1, bins+1):
+        bin_edges.append(bin_edges[i-1] + step)
+
+    hist = np.zeros(bins)
+    for value in data:
+        bin = find_bin(value, bin_edges)
+        hist[bin] += 1
+
+    for i in range(len(hist)):
+        hist[i] = hist[i] / size
+    return hist, bin_edges
 
 
 if __name__ == '__main__':
@@ -58,8 +77,8 @@ if __name__ == '__main__':
     hist_g = []
     hist_h = []
     for i in range(10):
-        hist_g.append(np.histogram(train_by_class["g"][:, i], bins=bins, density=True))
-        hist_h.append(np.histogram(train_by_class["h"][:, i], bins=bins, density=True))
+        hist_g.append(histogram(train_by_class["g"][:, i], bins=bins))
+        hist_h.append(histogram(train_by_class["h"][:, i], bins=bins))
 
     p0 = g / (g + h)
     p1 = h / (g + h)
@@ -68,10 +87,5 @@ if __name__ == '__main__':
 
     for caract in range(10):
         p1 = p1 * hist_h[caract][0][find_bin(test_by_class["h"][0][caract], hist_h[0][1])]
-        print(hist_h[caract][0][find_bin(test_by_class["h"][0][caract], hist_h[0][1])])
 
-    #plot(train_by_class["h"], bins)
-
-    print()
-    print(p0)
-    print(p1)
+    
