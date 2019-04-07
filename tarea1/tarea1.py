@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 import numpy as np
 from matplotlib import pyplot as plt
-
+import time
 
 def split_data(dat):
     # g: 0
     # h: 1
     g_len = 12332
-    g = np.array(dat[:g_len, :10])  # g class data
-    h = np.array(dat[g_len:, :10])  # h class data
+    g = np.array(dat[:g_len])  # g class data
+    h = np.array(dat[g_len:])  # h class data
 
     # shufle data
     np.random.shuffle(g)
@@ -30,19 +30,28 @@ def split_data(dat):
     return test_set, train_set, train_set_by_class, test_set_by_class
 
 
-def plot(train_set, bins, title="train_set"):
+def plot_np_hist(train_set, bins, title="train_set"):
     plt.suptitle(title, fontsize="x-large")
     for i in range(10):
-        plt.subplot(5, 2, i+1)
-        plt.hist(train_set[:, i], bins=bins, normed=True)
+        plt.subplot(5, 2, i + 1)
+        plt.hist(train_set[:, i], bins=bins, density=True)
         plt.title("x{}".format(i))
     plt.subplots_adjust(hspace=1, wspace=0.35)
-    plt.show()
+
+
+def plot_manual_hist(hists, edges, bins, title="train_set"):
+    plt.suptitle(title, fontsize="x-large")
+    for i in range(10):
+        bar_width = edges[i][1] - edges[i][0]
+        plt.subplot(5, 2, i + 1)
+        plt.bar(edges[i][:bins], hists[i], width=bar_width)
+        plt.title("x{}".format(i))
+    plt.subplots_adjust(hspace=1, wspace=0.35)
 
 
 def find_bin(x, bin_edges):
     res = 0
-    for edge in bin_edges[1:len(bin_edges)-1]:
+    for edge in bin_edges[1:len(bin_edges) - 1]:
         if x < edge:
             return res
         res += 1
@@ -55,8 +64,8 @@ def histogram(data, bins):
     size = len(data)
     step = (M - m) / bins
     bin_edges = [m]
-    for i in range(1, bins+1):
-        bin_edges.append(bin_edges[i-1] + step)
+    for i in range(1, bins + 1):
+        bin_edges.append(bin_edges[i - 1] + step)
 
     hist = np.zeros(bins)
     for value in data:
@@ -68,10 +77,50 @@ def histogram(data, bins):
     return hist, bin_edges
 
 
+def get_prob(hist, edges, x):
+    s = len(edges)
+    zero = 0.00000000000001
+    res = zero
+    if edges[0] <= x <= edges[s - 1]:
+        res = hist[find_bin(x, edges)]
+        if res == 0:
+            res = zero
+    return res
+
+
+def get_rates(test, hist_g, edges_g, hist_h, edges_h, theta):
+    TP = 0
+    FN = 0
+    FP = 0
+    TN = 0
+
+    for x in test:
+        p0 = p1 = 1
+        for caract in range(10):
+            p0 = p0 * get_prob(hist_g[caract], edges_g[caract], x[caract])
+        for caract in range(10):
+            p1 = p1 * get_prob(hist_h[caract], edges_h[caract], x[caract])
+
+        if p1 / p0 >= theta:  # classifier: hadron
+            if x[10] == 1:  # real: hadron
+                TP += 1
+            else:  # real: gamma
+                FP += 1
+        else:  # classifier: gamma
+            if x[10] == 1:  # real: hadron
+                FN += 1
+            else:  # real: gamma
+                TN += 1
+
+    TPR = TP / (TP + FN)
+    FPR = FP / (FP + TN)
+    return [FPR, TPR]
+
+
 if __name__ == '__main__':
     g = 12332
     h = 6688
-    bins = 30
+    bins = 50
     data = np.genfromtxt('magic04_label.data', delimiter=',')
     test, train, train_by_class, test_by_class = split_data(data)
     hist_g = []
@@ -86,15 +135,14 @@ if __name__ == '__main__':
         hist_h.append(hist)
         edges_h.append(edges)
 
-    p0 = 1
-    p1 = 1
-    for x in test_by_class["g"]:
-        for caract in range(10):
-            p0 = p0 * hist_g[caract][find_bin(x[caract], edges_g[caract])]
-        for caract in range(10):
-            p1 = p1 * hist_h[caract][find_bin(x[caract], edges_h[caract])]
-
-        if p0/p1 >= 2:
-            print("hadron")
-        else:
-            print("no hadron")
+    values = range(1, 500)
+    roc = []
+    for theta in values:
+        roc.append(get_rates(test, hist_g, edges_g, hist_h, edges_h, theta))
+    xs = [x[0] for x in roc]
+    ys = [x[1] for x in roc]
+    plt.plot(xs, ys)
+    plt.xlabel("FPR")
+    plt.ylabel("TPR")
+    plt.title("ROC curve")
+    plt.show()
