@@ -1,16 +1,23 @@
 #!/usr/bin/env python
 import numpy as np
 from matplotlib import pyplot as plt
-import time
+
 
 def split_data(dat):
     # g: 0
     # h: 1
-    g_len = 12332
-    g = np.array(dat[:g_len])  # g class data
-    h = np.array(dat[g_len:])  # h class data
+    g = np.array(range(11))  # this is needed for vstack function
+    h = np.array(range(11))
+    for x in data:
+        if x[10] == 1:
+            h = np.vstack((h, x))
+        else:
+            g = np.vstack((g, x))
 
-    # shufle data
+    g = g[1:]  # delete the first row (range(11))
+    h = h[1:]
+
+    # shuffle data
     np.random.shuffle(g)
     np.random.shuffle(h)
 
@@ -23,8 +30,8 @@ def split_data(dat):
     test_h = np.array(h[:test_h_len])
     train_h = np.array(h[test_h_len:])
 
-    train_set = np.array(np.vstack((train_g, train_h)))  # combine the sets of each train set class into one train set
-    test_set = np.array(np.vstack((test_g, test_h)))  # combine the sets of each test set class into one test set
+    train_set = np.vstack((train_g, train_h))  # combine the sets of each train set class into one train set
+    test_set = np.vstack((test_g, test_h))  # combine the sets of each test set class into one test set
     train_set_by_class = {"g": train_g, "h": train_h}  # dictionary of train sets by class
     test_set_by_class = {"g": test_g, "h": test_h}  # dictionary of test sets by class
     return test_set, train_set, train_set_by_class, test_set_by_class
@@ -69,8 +76,8 @@ def histogram(data, bins):
 
     hist = np.zeros(bins)
     for value in data:
-        bin = find_bin(value, bin_edges)
-        hist[bin] += 1
+        b = find_bin(value, bin_edges)
+        hist[b] += 1
 
     for i in range(len(hist)):
         hist[i] = hist[i] / size
@@ -117,32 +124,40 @@ def get_rates(test, hist_g, edges_g, hist_h, edges_h, theta):
     return [FPR, TPR]
 
 
-if __name__ == '__main__':
-    g = 12332
-    h = 6688
-    bins = 50
-    data = np.genfromtxt('magic04_label.data', delimiter=',')
-    test, train, train_by_class, test_by_class = split_data(data)
+def naive_bayes(bins, test, train_by_class):
     hist_g = []
     edges_g = []
     hist_h = []
     edges_h = []
     for i in range(10):
-        hist, edges = histogram(train_by_class["g"][:, i], bins=bins)
+        hist, edges = histogram(train_by_class["g"][:, i], bins)
         hist_g.append(hist)
         edges_g.append(edges)
-        hist, edges = histogram(train_by_class["h"][:, i], bins=bins)
+        hist, edges = histogram(train_by_class["h"][:, i], bins)
         hist_h.append(hist)
         edges_h.append(edges)
 
-    values = range(1, 500)
+    values = np.hstack((np.arange(0, 1, 0.05), np.array(range(1, 100))))
+
     roc = []
     for theta in values:
         roc.append(get_rates(test, hist_g, edges_g, hist_h, edges_h, theta))
     xs = [x[0] for x in roc]
     ys = [x[1] for x in roc]
-    plt.plot(xs, ys)
-    plt.xlabel("FPR")
-    plt.ylabel("TPR")
-    plt.title("ROC curve")
-    plt.show()
+    plt.plot(xs, ys, label="{} bins".format(bins))
+    plt.legend(loc="lower right")
+
+
+def gaussian(x, mu, cov):
+    pass
+
+
+if __name__ == '__main__':
+    data = np.genfromtxt('magic04_label.data', delimiter=',')
+    test, train, train_by_class, test_by_class = split_data(data)
+
+    # bins = range(40, 101, 10)
+    # for b in bins:
+    #     naive_bayes(b, test, train_by_class)
+    # plt.show()
+
