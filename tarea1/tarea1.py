@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import numpy as np
 from matplotlib import pyplot as plt
+import math
 
-
-def split_data(dat):
+def split_data(data):
     # g: 0
     # h: 1
     g = np.array(range(11))  # this is needed for vstack function
@@ -32,7 +32,7 @@ def split_data(dat):
 
     train_set = np.vstack((train_g, train_h))  # combine the sets of each train set class into one train set
     test_set = np.vstack((test_g, test_h))  # combine the sets of each test set class into one test set
-    train_set_by_class = {"g": train_g, "h": train_h}  # dictionary of train sets by class
+    train_set_by_class = {"g": np.array(train_g[:, :10]), "h": np.array(train_h[:, :10])}  # dictionary of train sets by class
     test_set_by_class = {"g": test_g, "h": test_h}  # dictionary of test sets by class
     return test_set, train_set, train_set_by_class, test_set_by_class
 
@@ -149,13 +149,60 @@ def naive_bayes(bins, test, train_by_class):
 
 
 def gaussian(x, mu, cov):
-    pass
+    pi = math.pi
+    k = len(x)
+    det = np.linalg.det(cov)
+    exp = ((x-mu).transpose()).dot(x-mu)/(2*det)
+    den = math.sqrt(math.pow(2*pi, k)*det)
+    return math.exp(exp)/den
+
+
+def get_parameters(data):
+    mu = np.array([])
+    for i in range(10):
+        mu = np.hstack((mu, np.mean(data[:, i])))
+    cov = np.cov(data, rowvar=False)
+    return mu, cov
+
+
+def get_rates2(test, mu_g, cov_g, mu_h, cov_h, theta):
+    TP = 0
+    FN = 0
+    FP = 0
+    TN = 0
+
+    for x in test:
+        p0 = gaussian(x[:10], mu_g, cov_g)
+        p1 = gaussian(x[:10], mu_h, cov_h)
+
+        if p1 / p0 >= theta:  # classifier: hadron
+            if x[10] == 1:  # real: hadron
+                TP += 1
+            else:  # real: gamma
+                FP += 1
+        else:  # classifier: gamma
+            if x[10] == 1:  # real: hadron
+                FN += 1
+            else:  # real: gamma
+                TN += 1
+
+    TPR = TP / (TP + FN)
+    FPR = FP / (FP + TN)
+    return [FPR, TPR]
 
 
 if __name__ == '__main__':
     data = np.genfromtxt('magic04_label.data', delimiter=',')
     test, train, train_by_class, test_by_class = split_data(data)
+    mu_h, cov_h = get_parameters(train_by_class["h"])
+    mu_g, cov_g = get_parameters(train_by_class["g"])
 
+    values = range(1, 10)
+
+    roc = []
+    for theta in values:
+        roc.append(get_rates2(test, mu_g, cov_g, mu_h, cov_h, theta))
+    print(roc)
     # bins = range(40, 101, 10)
     # for b in bins:
     #     naive_bayes(b, test, train_by_class)
