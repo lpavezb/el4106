@@ -3,6 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import math
 
+
 def split_data(data):
     # g: 0
     # h: 1
@@ -151,10 +152,12 @@ def naive_bayes(bins, test, train_by_class):
 def gaussian(x, mu, cov):
     pi = math.pi
     k = len(x)
+    diff = x - mu
+    inv = np.linalg.inv(cov)
     det = np.linalg.det(cov)
-    exp = ((x-mu).transpose()).dot(x-mu)/(2*det)
-    den = math.sqrt(math.pow(2*pi, k)*det)
-    return math.exp(exp)/den
+    exp = -1 * 0.5 * ((diff.transpose()).dot(inv)).dot(diff)
+    den = math.sqrt(math.pow(2 * pi, k) * det)
+    return math.exp(exp) / den
 
 
 def get_parameters(data):
@@ -174,7 +177,8 @@ def get_rates2(test, mu_g, cov_g, mu_h, cov_h, theta):
     for x in test:
         p0 = gaussian(x[:10], mu_g, cov_g)
         p1 = gaussian(x[:10], mu_h, cov_h)
-
+        if p0 == 0: p0 = 0.00000000000001
+        if p1 == 0: p1 = 0.00000000000001
         if p1 / p0 >= theta:  # classifier: hadron
             if x[10] == 1:  # real: hadron
                 TP += 1
@@ -197,14 +201,17 @@ if __name__ == '__main__':
     mu_h, cov_h = get_parameters(train_by_class["h"])
     mu_g, cov_g = get_parameters(train_by_class["g"])
 
-    values = range(1, 10)
+    values = np.hstack((np.arange(0, 1, 0.001)))
 
     roc = []
     for theta in values:
         roc.append(get_rates2(test, mu_g, cov_g, mu_h, cov_h, theta))
-    print(roc)
+
+    xs = [x[0] for x in roc]
+    ys = [x[1] for x in roc]
+    plt.scatter(xs, ys)
+    plt.show()
     # bins = range(40, 101, 10)
     # for b in bins:
     #     naive_bayes(b, test, train_by_class)
     # plt.show()
-
