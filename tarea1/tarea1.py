@@ -2,7 +2,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import math
-
+import time
 
 def split_data(data):
     # g: 0
@@ -200,18 +200,39 @@ if __name__ == '__main__':
     test, train, train_by_class, test_by_class = split_data(data)
     mu_h, cov_h = get_parameters(train_by_class["h"])
     mu_g, cov_g = get_parameters(train_by_class["g"])
-
-    values = np.hstack((np.arange(0, 1, 0.001)))
-
+    t1 = time.time()
+    values = np.arange(0, 1000, 0.001)
     roc = []
     for theta in values:
         roc.append(get_rates2(test, mu_g, cov_g, mu_h, cov_h, theta))
-
     xs = [x[0] for x in roc]
     ys = [x[1] for x in roc]
-    plt.scatter(xs, ys)
+    plt.plot(xs, ys, label="gauss model")
+
+    bins = 60
+    hist_g = []
+    edges_g = []
+    hist_h = []
+    edges_h = []
+    for i in range(10):
+        hist, edges = histogram(train_by_class["g"][:, i], bins)
+        hist_g.append(hist)
+        edges_g.append(edges)
+        hist, edges = histogram(train_by_class["h"][:, i], bins)
+        hist_h.append(hist)
+        edges_h.append(edges)
+
+    roc = []
+    it = 1
+    for theta in values:
+        roc.append(get_rates(test, hist_g, edges_g, hist_h, edges_h, theta))
+    xs = [x[0] for x in roc]
+    ys = [x[1] for x in roc]
+    plt.plot(xs, ys, label="histogram model")
+    plt.legend(loc="lower right")
+    plt.xlabel("FPR")
+    plt.ylabel("TPR")
+    plt.title("ROC curve, number of thetas = {}".format(len(values)))
+    t2 = time.time()
+    print(t2-t1)
     plt.show()
-    # bins = range(40, 101, 10)
-    # for b in bins:
-    #     naive_bayes(b, test, train_by_class)
-    # plt.show()
