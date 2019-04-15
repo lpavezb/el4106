@@ -2,11 +2,12 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import math
-import time
 
-def split_data(data):
-    # g: 0
-    # h: 1
+
+########################### DATA MANAGEMENT SECTION ###########################
+
+
+def separate_by_class(data):
     g = np.array(range(11))  # this is needed for vstack function
     h = np.array(range(11))
     for x in data:
@@ -17,6 +18,14 @@ def split_data(data):
 
     g = g[1:]  # delete the first row (range(11))
     h = h[1:]
+
+    return g, h
+
+
+def split_data(data):
+    # g: 0
+    # h: 1
+    g, h = separate_by_class(data)
 
     # shuffle data
     np.random.shuffle(g)
@@ -33,21 +42,12 @@ def split_data(data):
 
     train_set = np.vstack((train_g, train_h))  # combine the sets of each train set class into one train set
     test_set = np.vstack((test_g, test_h))  # combine the sets of each test set class into one test set
-    train_set_by_class = {"g": np.array(train_g[:, :10]), "h": np.array(train_h[:, :10])}  # dictionary of train sets by class
-    test_set_by_class = {"g": test_g, "h": test_h}  # dictionary of test sets by class
-    return test_set, train_set, train_set_by_class, test_set_by_class
+    return test_set, train_set
 
 
-def plot_np_hist(train_set, bins, title="train_set"):
-    plt.suptitle(title, fontsize="x-large")
-    for i in range(10):
-        plt.subplot(5, 2, i + 1)
-        plt.hist(train_set[:, i], bins=bins, density=True)
-        plt.title("x{}".format(i))
-    plt.subplots_adjust(hspace=1, wspace=0.35)
+########################### HISTOGRAM MODEL SECTION ###########################
 
-
-def plot_manual_hist(hists, edges, bins, title="train_set"):
+def plot_hists(hists, edges, bins, title="train_set"):
     plt.suptitle(title, fontsize="x-large")
     for i in range(10):
         bar_width = edges[i][1] - edges[i][0]
@@ -96,7 +96,7 @@ def get_prob(hist, edges, x):
     return res
 
 
-def get_rates(test, hist_g, edges_g, hist_h, edges_h, theta):
+def get_histogram_rates(test, hist_g, edges_g, hist_h, edges_h, theta):
     TP = 0
     FN = 0
     FP = 0
@@ -125,29 +125,7 @@ def get_rates(test, hist_g, edges_g, hist_h, edges_h, theta):
     return [FPR, TPR]
 
 
-def naive_bayes(bins, test, train_by_class):
-    hist_g = []
-    edges_g = []
-    hist_h = []
-    edges_h = []
-    for i in range(10):
-        hist, edges = histogram(train_by_class["g"][:, i], bins)
-        hist_g.append(hist)
-        edges_g.append(edges)
-        hist, edges = histogram(train_by_class["h"][:, i], bins)
-        hist_h.append(hist)
-        edges_h.append(edges)
-
-    values = np.hstack((np.arange(0, 1, 0.05), np.array(range(1, 100))))
-
-    roc = []
-    for theta in values:
-        roc.append(get_rates(test, hist_g, edges_g, hist_h, edges_h, theta))
-    xs = [x[0] for x in roc]
-    ys = [x[1] for x in roc]
-    plt.plot(xs, ys, label="{} bins".format(bins))
-    plt.legend(loc="lower right")
-
+########################### GAUSSIAN MODEL SECTION ###########################
 
 def gaussian(x, mu, cov):
     pi = math.pi
@@ -168,7 +146,7 @@ def get_parameters(data):
     return mu, cov
 
 
-def get_rates2(test, mu_g, cov_g, mu_h, cov_h, theta):
+def get_gaussian_rates(test, mu_g, cov_g, mu_h, cov_h, theta):
     TP = 0
     FN = 0
     FP = 0
@@ -195,44 +173,57 @@ def get_rates2(test, mu_g, cov_g, mu_h, cov_h, theta):
     return [FPR, TPR]
 
 
-if __name__ == '__main__':
-    data = np.genfromtxt('magic04_label.data', delimiter=',')
-    test, train, train_by_class, test_by_class = split_data(data)
-    mu_h, cov_h = get_parameters(train_by_class["h"])
-    mu_g, cov_g = get_parameters(train_by_class["g"])
-    t1 = time.time()
-    values = np.arange(0, 1000, 0.001)
-    roc = []
-    for theta in values:
-        roc.append(get_rates2(test, mu_g, cov_g, mu_h, cov_h, theta))
-    xs = [x[0] for x in roc]
-    ys = [x[1] for x in roc]
-    plt.plot(xs, ys, label="gauss model")
+########################### MAIN SECTION ###########################
 
-    bins = 60
+def naive_bayes(bins, test, train, thetas):
     hist_g = []
     edges_g = []
     hist_h = []
     edges_h = []
+
+    g, h = separate_by_class(train)
     for i in range(10):
-        hist, edges = histogram(train_by_class["g"][:, i], bins)
+        hist, edges = histogram(g[:, i], bins)
         hist_g.append(hist)
         edges_g.append(edges)
-        hist, edges = histogram(train_by_class["h"][:, i], bins)
+        hist, edges = histogram(h[:, i], bins)
         hist_h.append(hist)
         edges_h.append(edges)
 
     roc = []
-    it = 1
-    for theta in values:
-        roc.append(get_rates(test, hist_g, edges_g, hist_h, edges_h, theta))
+    for theta in thetas:
+        roc.append(get_histogram_rates(test, hist_g, edges_g, hist_h, edges_h, theta))
     xs = [x[0] for x in roc]
     ys = [x[1] for x in roc]
-    plt.plot(xs, ys, label="histogram model")
-    plt.legend(loc="lower right")
+    plt.plot(xs, ys, label="histogram model, {} bins".format(bins))
+
+
+def gauss_bayes(test, train, thetas):
+    g, h = separate_by_class(train)
+
+    mu_h, cov_h = get_parameters(h[:, :10])  # delete last column
+    mu_g, cov_g = get_parameters(g[:, :10])
+    roc = []
+    for theta in thetas:
+        roc.append(get_gaussian_rates(test, mu_g, cov_g, mu_h, cov_h, theta))
+    xs = [x[0] for x in roc]
+    ys = [x[1] for x in roc]
+    plt.plot(xs, ys, label="gauss model")
+
+
+def tarea1(entrenamiento, prueba):
+    bins = 60
+    thetas = np.hstack((np.arange(0, 1, 0.01), np.arange(1, 100, 1)))
+    naive_bayes(bins, prueba, entrenamiento, thetas)
+    gauss_bayes(prueba, entrenamiento, thetas)
     plt.xlabel("FPR")
     plt.ylabel("TPR")
-    plt.title("ROC curve, number of thetas = {}".format(len(values)))
-    t2 = time.time()
-    print(t2-t1)
+    plt.title("ROC curve, number of thetas = {}".format(len(thetas)))
+    plt.legend(loc="lower right")
     plt.show()
+
+
+if __name__ == '__main__':
+    data = np.genfromtxt('magic04_label.data', delimiter=',')
+    test, train = split_data(data)
+    tarea1(train, test)
