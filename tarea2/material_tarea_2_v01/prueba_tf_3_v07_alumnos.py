@@ -13,6 +13,7 @@ import pandas as pd
 import seaborn as sns
 from math import floor, ceil
 from pylab import rcParams
+from sklearn.preprocessing import LabelBinarizer
 import time
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -42,6 +43,14 @@ def split_data(data, train_size=0.8):
     return train, validation
 
 
+def multilayer_perceptron(x, weights, biases, keep_prob):
+    layer_1 = tf.add(tf.matmul(x, weights['h1']), biases['b1'])
+    layer_1 = tf.nn.sigmoid(layer_1)
+    layer_1 = tf.nn.dropout(layer_1, keep_prob)
+    out_layer = tf.matmul(layer_1, weights['out']) + biases['out']
+    return out_layer
+
+
 random_state = 42
 np.random.seed(random_state)
 tf.set_random_seed(random_state)
@@ -50,31 +59,26 @@ tf.set_random_seed(random_state)
 D = np.loadtxt('sensorless_tarea2_train.txt', delimiter=',')
 T = np.loadtxt('sensorless_tarea2_test.txt', delimiter=',')
 
+train, validation = split_data(D)
 nc = D.shape[1]-1
-data_x = D[:,0:nc]
-data_y = D[:,nc] - 1
+data_x = D[:, :nc]
+data_y = D[:, nc] - 1
 data_y = data_y.astype(int)
 
-print(split_data(D)[0][:, 48])
-from sklearn.preprocessing import LabelBinarizer
+x_train = train[:, :nc]
+y_train = train[:, nc] - 1
+y_train = y_train.astype(int)
+
+x_valid = validation[:, :nc]
+y_valid = validation[:, nc] - 1
+y_valid = y_valid.astype(int)
+
+
 label_binarizer = LabelBinarizer()
 label_binarizer.fit(range(max(data_y)+1))
 data_y = label_binarizer.transform(data_y).astype(float)
-
-train_size = 0.8
-
-train_cnt = floor(data_x.shape[0] * train_size)
-x_train = data_x[0:train_cnt,:]
-y_train = data_y[0:train_cnt,:]
-x_valid = data_x[train_cnt:,:]
-y_valid = data_y[train_cnt:,:]
-
-def multilayer_perceptron(x, weights, biases, keep_prob):
-    layer_1 = tf.add(tf.matmul(x, weights['h1']), biases['b1'])
-    layer_1 = tf.nn.relu(layer_1)
-    layer_1 = tf.nn.dropout(layer_1, keep_prob)
-    out_layer = tf.matmul(layer_1, weights['out']) + biases['out']
-    return out_layer
+y_train = label_binarizer.transform(y_train).astype(float)
+y_valid = label_binarizer.transform(y_valid).astype(float)
 
 
 n_hidden_1 = 28
