@@ -73,17 +73,22 @@ x_valid = validation[:, :nc]
 y_valid = validation[:, nc] - 1
 y_valid = y_valid.astype(int)
 
+x_test = T[:, :nc]
+y_test = T[:, nc] - 1
+y_test = y_test.astype(int)
 
 label_binarizer = LabelBinarizer()
 label_binarizer.fit(range(max(data_y)+1))
 data_y = label_binarizer.transform(data_y).astype(float)
 y_train = label_binarizer.transform(y_train).astype(float)
 y_valid = label_binarizer.transform(y_valid).astype(float)
+y_test = label_binarizer.transform(y_test).astype(float)
 
 
-n_hidden_1 = 28
+#n_hidden_1 = 28
 n_input = data_x.shape[1]
 n_classes = data_y.shape[1]
+n_hidden_1 = int((n_input + n_classes)*2/3)
 
 weights = {
     'h1': tf.Variable(tf.random_normal([n_input, n_hidden_1])),
@@ -112,7 +117,10 @@ optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     t1 = time.time()
-    acc = []
+    acc_train = []
+    acc_valid = []
+    acc_test = []
+
     for epoch in range(training_epochs):
         avg_cost = 0.0
         total_batch = int(len(x_train) / batch_size)
@@ -129,14 +137,22 @@ with tf.Session() as sess:
             avg_cost += c / total_batch
         correct_prediction = tf.equal(tf.argmax(predictions, 1), tf.argmax(y, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-        accuracy_eval = accuracy.eval({x: x_valid, y: y_valid, keep_prob: 1.0})
-        acc.append(accuracy_eval)
+        #accuracy_eval = accuracy.eval({x: x_valid, y: y_valid, keep_prob: 1.0})
+        train_acc = accuracy.eval({x: x_train, y: y_train, keep_prob: 1.0})
+        valid_acc = accuracy.eval({x: x_valid, y: y_valid, keep_prob: 1.0})
+        test_acc = accuracy.eval({x: x_test, y: y_test, keep_prob: 1.0})
+        acc_train.append(train_acc)
+        acc_valid.append(valid_acc)
+        acc_test.append(test_acc)
         if epoch % display_step == 0:
             print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost))
-            print("Accuracy validation:", accuracy_eval)
+            print("Accuracy validation:", train_acc)
     t2 = time.time()
     print("Optimization Finished!, time = {:.2f}".format(t2-t1))
-    plt.scatter(range(training_epochs), acc)
+    plt.plot(range(training_epochs), acc_train, label="train_accuracy")
+    plt.plot(range(training_epochs), acc_valid, label="valid_accuracy")
+    plt.plot(range(training_epochs), acc_test, label="test_accuracy")
+    plt.legend(loc="lower right")
     plt.title("accuracy curve")
     plt.ylabel("accuracy")
     plt.xlabel("epoch")
