@@ -53,11 +53,13 @@ def train_perceptron(x, y, predictions, cost, optimizer, x_train, y_train, x_dat
     training_epochs = 1500
     display_step = 100
     batch_size = 32
+
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         t1 = time.time()
         acc = []
-
+        correct_prediction = tf.equal(tf.argmax(predictions, 1), tf.argmax(y, 1))
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
         for epoch in range(training_epochs):
             avg_cost = 0.0
             total_batch = int(len(x_train) / batch_size)
@@ -72,22 +74,26 @@ def train_perceptron(x, y, predictions, cost, optimizer, x_train, y_train, x_dat
                                     keep_prob: 0.8
                                 })
                 avg_cost += c / total_batch
-            correct_prediction = tf.equal(tf.argmax(predictions, 1), tf.argmax(y, 1))
-            accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
             data_acc = accuracy.eval({x: x_data, y: y_data, keep_prob: 1.0})
             acc.append(data_acc)
             if epoch % display_step == 0:
                 print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost))
                 print("Accuracy validation:", data_acc)
         t2 = time.time()
-        print("Optimization Finished!, time = {:.2f}".format(t2-t1))
-        plt.plot(range(training_epochs), acc)
-        correct_prediction = tf.equal(tf.argmax(predictions, 1), tf.argmax(y, 1))
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-        print("Accuracy validation:", accuracy.eval({x: x_data, y: y_data, keep_prob: 1.0}))
         print("Confusion matrix validation")
+        print("Optimization Finished!")
+        plt.plot(range(training_epochs), acc)
+        print("Accuracy validation:", accuracy.eval({x: x_data, y: y_data, keep_prob: 1.0}))
+        print("----------------------------------------------")
         confm = tf.confusion_matrix(tf.argmax(y,1),tf.argmax(predictions, 1), num_classes=y_train.shape[1])
-        print(confm.eval({x: x_data, y: y_data, keep_prob: 1.0}))
+        confm_eval = confm.eval({x: x_data, y: y_data, keep_prob: 1.0})
+        confm_diagonal = np.diag(confm_eval)
+        print(confm_eval)
+        print("training time: {:.2f}".format(t2-t1))
+        print("mean of confusion matrix diagonal: {:.2f}".format(np.mean(confm_diagonal)))
+        print("standard deviation of confusion matrix diagonal: {:.2f}".format(np.std(confm_diagonal)))
+        print("----------------------------------------------")
+        return
 
 
 def separate_characteristics_and_class(data, nc, label_binarizer):
@@ -125,6 +131,7 @@ def create_and_train_perceptron(x_train, y_train, x_data, y_data, n_hidden, sigm
     optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
 
     train_perceptron(x, y, predictions, cost, optimizer, x_train, y_train, x_data, y_data, n_hidden, keep_prob)
+    return
 
 
 def tarea2(seed, sigmoid=1):
@@ -149,6 +156,7 @@ def tarea2(seed, sigmoid=1):
     n_hidden = int((n_input + n_classes)*2/3)
 
     create_and_train_perceptron(x_train, y_train, x_test, y_test, n_hidden, sigmoid)
+    return
 
 
 if __name__ == '__main__':
@@ -161,7 +169,6 @@ if __name__ == '__main__':
     plt.xlabel("epoch")
 
     plt.figure(2)
-    random = [20, 40, 60]
     for seed in random:
         tarea2(seed, sigmoid=0)
     plt.title("accuracy curve, ReLU")
