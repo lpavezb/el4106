@@ -61,6 +61,32 @@ def split_text_and_labels(data):
     return data[:, :s-1], data[:, s-1]
 
 
+def grid_and_roc(svc, x_data, y_data):
+    parameters = {'C': [1, 10, 100, 1000]}
+    grid = GridSearchCV(svc, parameters, cv=5, n_jobs=-1)
+    grid.fit(x_train, y_train)
+
+    classifier = grid.best_estimator_
+    predictions = classifier.predict(x_data)
+    y_valid_score = classifier.decision_function(x_data)
+
+    print(metrics.confusion_matrix(y_data, predictions))
+
+    fpr, tpr, _ = metrics.roc_curve(y_data, y_valid_score)
+    auc = metrics.auc(fpr, tpr)
+
+    kernel = svc.kernel
+    if kernel == 'linear':
+        label = 'kernel linear, auc = {}'.format(auc)
+    elif kernel == 'poly':
+        label = 'kernel polinomial, degree = {}, auc = {}'.format(svc.degree, auc)
+    else:
+        label = 'kernel rbf, auc = {}'.format(auc)
+    plt.plot(fpr, tpr, label=label)
+
+    return svc, auc
+
+
 if __name__ == "__main__":
     data = load_file()
     vectorizer = CountVectorizer()
@@ -75,21 +101,30 @@ if __name__ == "__main__":
 
     x_train, y_train = split_text_and_labels(train_set)
     x_valid, y_valid = split_text_and_labels(valid_set)
+    x_test, y_test = split_text_and_labels(test_set)
 
-    svc = svm.SVC(kernel='linear', probability=True)
-    parameters = {'C': [1, 10, 100, 1000], 'kernel':['linear']}
-    grid = GridSearchCV(svc, parameters, cv=5, n_jobs=-1)
-    grid.fit(x_train, y_train)
+    svcs = [svm.SVC(kernel='linear', probability=True), svm.SVC(kernel='poly', degree=2, probability=True),
+            svm.SVC(kernel='poly', degree=3, probability=True), svm.SVC(kernel='rbf', probability=True)]
 
-    classifier = grid.best_estimator_
-    predictions = classifier.predict(x_valid)
-    y_valid_score = classifier.decision_function(x_valid)
+    M = 0
+    best = svcs[0]
+    plt.figure(0)
+    for svc in svcs:
+        s, m = grid_and_roc(svc, x_valid, y_valid)
+        if m > M:
+            M = m
+            best = s
+    plt.title("ROC curve, valid set")
+    plt.legend(loc="lower right")
+    plt.ylabel("TPR")
+    plt.xlabel("FPR")
 
-    print(metrics.confusion_matrix(y_valid, predictions))
-
-    fpr, tpr, _ = metrics.roc_curve(y_valid, y_valid_score)
-
-    plt.plot(fpr, tpr)
+    plt.figure(1)
+    grid_and_roc(best, x_test, y_test)
+    plt.title("ROC curve, best kernel, test set")
+    plt.legend(loc="lower right")
+    plt.ylabel("TPR")
+    plt.xlabel("FPR")
     plt.show()
 
 
