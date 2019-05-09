@@ -5,8 +5,8 @@ import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.grid_search import GridSearchCV
 from sklearn import svm
-from sklearn.metrics import confusion_matrix
-
+from sklearn import metrics
+from matplotlib import pyplot as plt
 
 def load_file():
     file = open("Restaurant_Reviews_pl.tsv")
@@ -20,17 +20,17 @@ def load_file():
 
 
 def split_data(data):
-    good = np.array(range(2))  # this is needed for vstack function
-    bad = np.array(range(2))
+    s = len(data[0])
+    good = []  # this is needed for vstack function
+    bad = []
     for x in data:
-        if x[1] == 1:
-            good = np.vstack((good, x))
+        if x[s-1] == 1:
+            good.append(x)
         else:
-            bad = np.vstack((bad, x))
+            bad.append(x)
 
-    good = good[1:]  # delete the first row (range(2))
-    bad = bad[1:]
-
+    good = np.array(good)
+    bad = np.array(bad)
     train_good_len = len(good) * 60 // 100
     valid_good_len = len(good) * 80 // 100
     train_bad_len = len(bad) * 60 // 100
@@ -57,7 +57,8 @@ def split_data(data):
 
 
 def split_text_and_labels(data):
-    return data[:, 0], data[:, 1]
+    s = len(data[0])
+    return data[:, :s-1], data[:, s-1]
 
 
 if __name__ == "__main__":
@@ -65,8 +66,30 @@ if __name__ == "__main__":
     vectorizer = CountVectorizer()
     bow = vectorizer.fit_transform(data[:, 0])
 
-    # features = np.array(bow.toarray())
-    # labels = np.array(data[:, 1])
-    # train_set, valid_set, test_set = split_data(data)
+    features = np.array(bow.toarray())
+    labels = np.array(data[:, 1])
+    labels = labels.astype(np.int)
+    features_with_labels = np.hstack((features, labels.reshape(1000, 1)))
+
+    train_set, valid_set, test_set = split_data(features_with_labels)
+
+    x_train, y_train = split_text_and_labels(train_set)
+    x_valid, y_valid = split_text_and_labels(valid_set)
+
+    svc = svm.SVC(kernel='linear', probability=True)
+    parameters = {'C': [1, 10, 100, 1000], 'kernel':['linear']}
+    grid = GridSearchCV(svc, parameters, cv=5, n_jobs=-1)
+    grid.fit(x_train, y_train)
+
+    classifier = grid.best_estimator_
+    predictions = classifier.predict(x_valid)
+    y_valid_score = classifier.decision_function(x_valid)
+
+    print(metrics.confusion_matrix(y_valid, predictions))
+
+    fpr, tpr, _ = metrics.roc_curve(y_valid, y_valid_score)
+
+    plt.plot(fpr, tpr)
+    plt.show()
 
 
