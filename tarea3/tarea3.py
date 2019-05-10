@@ -3,10 +3,12 @@
 
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.grid_search import GridSearchCV
+from sklearn.model_selection import GridSearchCV
 from sklearn import svm
 from sklearn import metrics
 from matplotlib import pyplot as plt
+import time
+
 
 def load_file():
     file = open("Restaurant_Reviews_pl.tsv")
@@ -62,6 +64,7 @@ def split_text_and_labels(data):
 
 
 def grid_and_roc(svc, x_data, y_data):
+    t1 = time.time()
     parameters = {'C': [1, 10, 100, 1000]}
     grid = GridSearchCV(svc, parameters, cv=5, n_jobs=-1)
     grid.fit(x_train, y_train)
@@ -69,7 +72,7 @@ def grid_and_roc(svc, x_data, y_data):
     classifier = grid.best_estimator_
     predictions = classifier.predict(x_data)
     y_valid_score = classifier.decision_function(x_data)
-
+    print("-----------------------------------------------")
     print(metrics.confusion_matrix(y_data, predictions))
 
     fpr, tpr, _ = metrics.roc_curve(y_data, y_valid_score)
@@ -77,13 +80,16 @@ def grid_and_roc(svc, x_data, y_data):
 
     kernel = svc.kernel
     if kernel == 'linear':
-        label = 'kernel linear, auc = {}'.format(auc)
+        label = 'kernel linear, auc = {:.3f}'.format(auc)
     elif kernel == 'poly':
-        label = 'kernel polinomial, degree = {}, auc = {}'.format(svc.degree, auc)
+        label = 'kernel polinomial, degree = {}, auc = {:.3f}'.format(svc.degree, auc)
     else:
-        label = 'kernel rbf, auc = {}'.format(auc)
+        label = 'kernel rbf, auc = {:.3f}'.format(auc)
     plt.plot(fpr, tpr, label=label)
-
+    t2 = time.time()
+    print(label)
+    print("training time = {:.2f}".format(t2 - t1))
+    print("-----------------------------------------------")
     return svc, auc
 
 
@@ -103,9 +109,8 @@ if __name__ == "__main__":
     x_valid, y_valid = split_text_and_labels(valid_set)
     x_test, y_test = split_text_and_labels(test_set)
 
-    svcs = [svm.SVC(kernel='linear', probability=True), svm.SVC(kernel='poly', degree=2, probability=True),
-            svm.SVC(kernel='poly', degree=3, probability=True), svm.SVC(kernel='rbf', probability=True)]
-
+    svcs = [svm.SVC(kernel='linear', gamma='auto', probability=True), svm.SVC(kernel='poly', gamma='auto', degree=2, probability=True),
+            svm.SVC(kernel='poly', gamma='auto', degree=3, probability=True), svm.SVC(kernel='rbf',  gamma='auto', probability=True)]
     M = 0
     best = svcs[0]
     plt.figure(0)
