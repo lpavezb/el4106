@@ -23,7 +23,7 @@ def load_file():
 
 def split_data(data):
     s = len(data[0])
-    good = []  # this is needed for vstack function
+    good = []
     bad = []
     for x in data:
         if x[s-1] == 1:
@@ -63,7 +63,10 @@ def split_text_and_labels(data):
     return data[:, :s-1], data[:, s-1]
 
 
-def grid_and_roc(svc, x_data, y_data):
+def grid_and_roc(svc, train, data):
+    x_train, y_train = split_text_and_labels(train)
+    x_data, y_data= split_text_and_labels(data)
+
     t1 = time.time()
     parameters = {'C': [1, 10, 100, 1000]}
     grid = GridSearchCV(svc, parameters, cv=5, n_jobs=-1)
@@ -105,17 +108,13 @@ if __name__ == "__main__":
 
     train_set, valid_set, test_set = split_data(features_with_labels)
 
-    x_train, y_train = split_text_and_labels(train_set)
-    x_valid, y_valid = split_text_and_labels(valid_set)
-    x_test, y_test = split_text_and_labels(test_set)
-
     svcs = [svm.SVC(kernel='linear', gamma='auto', probability=True), svm.SVC(kernel='poly', gamma='auto', degree=2, probability=True),
             svm.SVC(kernel='poly', gamma='auto', degree=3, probability=True), svm.SVC(kernel='rbf',  gamma='auto', probability=True)]
     M = 0
     best = svcs[0]
     plt.figure(0)
     for svc in svcs:
-        s, m = grid_and_roc(svc, x_valid, y_valid)
+        s, m = grid_and_roc(svc, train_set, valid_set)
         if m > M:
             M = m
             best = s
@@ -125,7 +124,7 @@ if __name__ == "__main__":
     plt.xlabel("FPR")
 
     plt.figure(1)
-    grid_and_roc(best, x_test, y_test)
+    grid_and_roc(best, train_set, test_set)
     plt.title("ROC curve, best kernel, test set")
     plt.legend(loc="lower right")
     plt.ylabel("TPR")
