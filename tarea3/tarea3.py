@@ -122,6 +122,7 @@ if __name__ == "__main__":
     plt.legend(loc="lower right")
     plt.ylabel("TPR")
     plt.xlabel("FPR")
+    plt.savefig("kernel_comparation")
 
     plt.figure(1)
     grid_and_roc(best, train_set, test_set)
@@ -129,6 +130,7 @@ if __name__ == "__main__":
     plt.legend(loc="lower right")
     plt.ylabel("TPR")
     plt.xlabel("FPR")
+    plt.savefig("best_kernel")
     plt.show()
 
 
