@@ -30,7 +30,7 @@ print(__doc__)
 from time import time
 import numpy as np
 import matplotlib.pyplot as plt
-
+import pandas as pd
 from sklearn import metrics
 from sklearn.cluster import KMeans
 from sklearn.datasets import load_digits
@@ -39,12 +39,23 @@ from sklearn.preprocessing import scale
 
 np.random.seed(42)
 
-digits = load_digits()
-data = scale(digits.data)
+df = pd.read_csv("Frogs_MFCCs.csv")
+species = df["Species"]
+features = df.drop("RecordID", 1).drop("Family", 1).drop("Genus", 1).drop("Species", 1)
+labels_unique = {}
+species_unique = species.unique()
+for i in range(len(species_unique)):
+    labels_unique[species_unique[i]] = i
+
+labels = []
+for specie in species:
+    labels.append(labels_unique[specie])
+
+
+data = scale(features)
 
 n_samples, n_features = data.shape
-n_digits = len(np.unique(digits.target))
-labels = digits.target
+n_digits = len(np.unique(labels))
 
 sample_size = 300
 
