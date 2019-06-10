@@ -32,7 +32,7 @@ def bench_k_means(estimator, name, data, true_labels):
 def bench_DBSCAN(epsilon, data, true_labels, extra_cluster):
     data_ = data.copy()
     metric_labels = true_labels[:]
-    estimator = DBSCAN(eps=epsilon, min_samples=3)
+    estimator = DBSCAN(eps=epsilon)
     t0 = time()
     estimator.fit(data_)
     labels = estimator.labels_
