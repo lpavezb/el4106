@@ -1,13 +1,11 @@
 from time import time
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from sklearn import metrics
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import scale
-from sklearn.preprocessing import StandardScaler
 
 
 def bench_k_means(estimator, name, data, true_labels):
@@ -15,9 +13,7 @@ def bench_k_means(estimator, name, data, true_labels):
     t0 = time()
     estimator.fit(data)
     labels = estimator.labels_
-    homo = metrics.homogeneity_score(true_labels, labels)
-    compl = metrics.completeness_score(true_labels, labels)
-    vmeas = metrics.v_measure_score(true_labels, labels)
+    homo, compl, vmeas = metrics.homogeneity_completeness_v_measure(true_labels, labels)
     silhouette = metrics.silhouette_score(data, labels, metric='euclidean')
     print("{:20}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}".format(
         name,
@@ -57,15 +53,16 @@ def bench_DBSCAN(epsilon, data, true_labels, extra_cluster):
             if labels[i] == -1:
                 labels[i] = last
 
-    if n_clusters_ == 1:
+    if n_clusters_ <= 1:
         homo = "----"
         compl = "----"
         vmeas = "----"
         silhouette = "----"
     else:
-        homo = round(metrics.homogeneity_score(metric_labels, labels), 3)
-        compl = round(metrics.completeness_score(metric_labels, labels), 3)
-        vmeas = round(metrics.v_measure_score(metric_labels, labels), 3)
+        homo, compl, vmeas = metrics.homogeneity_completeness_v_measure(metric_labels, labels)
+        homo = round(homo, 3)
+        compl = round(compl, 3)
+        vmeas = round(vmeas, 3)
         silhouette = round(metrics.silhouette_score(data_, labels, metric='euclidean'), 3)
     print("{:20}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}".format("DBSCAN_" + str(epsilon) + "_" + str(extra_cluster),
                                                                          round(time() - t0, 3),
@@ -76,23 +73,23 @@ def bench_DBSCAN(epsilon, data, true_labels, extra_cluster):
                                                                          n_clusters_))
 
 
-def bench_agglomerative_clustering(data, true_labels):
-    estimator = AgglomerativeClustering(n_clusters=10)
+def bench_agglomerative_clustering(estimator, data, true_labels):
     t0 = time()
     estimator.fit(data)
     labels = estimator.labels_
     clusters = set(labels)
     n_clusters_ = len(clusters)
 
-    if n_clusters_ == 1:
+    if n_clusters_ <= 1:
         homo = "----"
         compl = "----"
         vmeas = "----"
         silhouette = "----"
     else:
-        homo = round(metrics.homogeneity_score(true_labels, labels), 3)
-        compl = round(metrics.completeness_score(true_labels, labels), 3)
-        vmeas = round(metrics.v_measure_score(true_labels, labels), 3)
+        homo, compl, vmeas = metrics.homogeneity_completeness_v_measure(true_labels, labels)
+        homo = round(homo, 3)
+        compl = round(compl, 3)
+        vmeas = round(vmeas, 3)
         silhouette = round(metrics.silhouette_score(data, labels, metric='euclidean'), 3)
     print("{:20}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}\t{:<10}".format("AGGC",
                                                                          round(time() - t0, 3),
@@ -107,7 +104,8 @@ if __name__ == "__main__":
     np.random.seed(42)
     df = pd.read_csv("Frogs_MFCCs.csv")
     species = df["Species"]
-    features = df.drop("RecordID", 1).drop("Family", 1).drop("Genus", 1).drop("Species", 1)
+    features = df.drop(["RecordID", "Family", "Genus", "Species"], 1)
+    feature_names = features.columns.tolist()
     labels_unique = {}
     species_unique = species.unique()
     for i in range(len(species_unique)):
@@ -117,9 +115,12 @@ if __name__ == "__main__":
     for specie in species:
         labels.append(labels_unique[specie])
 
-    labels_df = pd.DataFrame(data={"label": labels})
     n_samples, n_features = features.shape
     n_clusters = len(np.unique(labels))
+
+    features = scale(features)
+    features = pd.DataFrame(data=features, columns=feature_names)
+
     print(100 * '_')
     print("n_clusters: %d, \t n_samples %d, \t n_features %d"
           % (n_clusters, n_samples, n_features))
@@ -127,22 +128,20 @@ if __name__ == "__main__":
     print("{:20}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}".format("init", "time", "homo", "compl", "v-meas", "silhouette",
                                                                    "n_clusters"))
 
-    bench_k_means(KMeans(init='random', n_clusters=10), "random", features, labels)
-    bench_k_means(KMeans(init='k-means++', n_clusters=10), "k-means++", features, labels)
+    bench_k_means(KMeans(init='random', n_clusters=10), "KMeans_random", features, labels)
+    bench_k_means(KMeans(init='k-means++', n_clusters=10), "KMeans_k-means++", features, labels)
     bench_DBSCAN(0.5, features, labels, False)
     bench_DBSCAN(0.7, features, labels, False)
     bench_DBSCAN(0.2, features, labels, False)
     bench_DBSCAN(0.5, features, labels, True)
     bench_DBSCAN(0.7, features, labels, True)
     bench_DBSCAN(0.2, features, labels, True)
-    bench_agglomerative_clustering(features, labels)
+    bench_agglomerative_clustering(AgglomerativeClustering(n_clusters=10), features, labels)
 
     print(100 * '_')
 
-    scaler = StandardScaler()
-    pca_features = scaler.fit_transform(features)
     pca = PCA(n_components=2)
-    pca_features = pca.fit_transform(pca_features)
+    pca_features = pca.fit_transform(features)
 
     pca_features = pd.DataFrame(data=pca_features, columns=['col1', 'col2'])
     print(48 * " " + "PCA")
@@ -163,6 +162,6 @@ if __name__ == "__main__":
     bench_DBSCAN(0.5, pca_features, labels, True)
     bench_DBSCAN(0.7, pca_features, labels, True)
     bench_DBSCAN(0.2, pca_features, labels, True)
-    bench_agglomerative_clustering(pca_features, labels)
+    bench_agglomerative_clustering(AgglomerativeClustering(n_clusters=10), pca_features, labels)
 
     print(100 * '_')
