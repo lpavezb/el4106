@@ -1,11 +1,12 @@
 import os
+import sys
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from time import time
 from matplotlib import pyplot as plt
 from sklearn import svm, metrics
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, ParameterGrid
 from sklearn.preprocessing import LabelBinarizer, StandardScaler
 from sklearn.feature_selection import SelectKBest, mutual_info_classif
 
@@ -40,9 +41,7 @@ def root_mean_square(data):
 #     plt.subplots_adjust(hspace=1, wspace=0.35)
 
 
-def perceptron_classifier(train, valid):
-    x_train, y_train = train.drop("label", 1), train["label"]
-    x_data, y_data = valid.drop("label", 1), valid["label"]
+def perceptron_classifier(x_train, y_train, x_data, y_data):
 
     label_binarizer = LabelBinarizer()
     label_binarizer.fit(range(6))
@@ -126,12 +125,10 @@ def perceptron_classifier(train, valid):
         print("----------------------------------------------")
 
 
-def svm_classifier(train, valid):
-    x_train, y_train = train.drop("label", 1), train["label"]
-    x_data, y_data = valid.drop("label", 1), valid["label"]
-    svc = svm.LinearSVC()
+def svm_classifier(x_train, y_train, x_data, y_data):
+    svc = svm.SVC(kernel='rbf',  gamma='auto', probability=True)
     t1 = time()
-    parameters = {'C': [1, 10, 100, 1000]}
+    parameters = {'C': [0.1, 1, 10, 100, 1000], 'kernel': ['poly', 'rbf', 'linear'], 'gamma': ['auto', 'scale'], 'degree': [2, 3, 4]}
     grid = GridSearchCV(svc, parameters, cv=5)
     grid.fit(x_train, y_train)
 
@@ -193,6 +190,8 @@ def get_features(window):
 
 
 if __name__ == "__main__":
+    np.set_printoptions(threshold=sys.maxsize)
+    np.random.seed(42)
     path = "EMG_data/"
     subjects = os.listdir(path)
     subjects.sort()
@@ -202,11 +201,11 @@ if __name__ == "__main__":
     t_len = int(len(train_validation)*0.6)
 
     test_subjects = subjects[test_len:]
-    # train_subjects = train_validation[:t_len]
-    # validation_subjects = train_validation[t_len:]
+    train_subjects = train_validation[:t_len]
+    validation_subjects = train_validation[t_len:]
 
-    train_subjects = ["01", "02", "03", "04"]
-    validation_subjects = ["06", "07", "08", "09"]
+    # train_subjects = ["01", "02", "03", "04"]
+    # validation_subjects = ["06", "07", "08", "09"]
     columns = ["channel1", "channel2", "channel3", "channel4", "channel5", "channel6", "channel7", "channel8", "class"]
     empty_data = pd.DataFrame(columns=columns)
 
@@ -271,13 +270,18 @@ if __name__ == "__main__":
 
     print(44 * '-' + "value counts" + 44 * '-')
     print(t_windows["label"].value_counts())
-    print(len(t_windows))
     print(100 * "-")
 
     print(41 * '-' + "feature selection" + 42 * '-')
-    X, y = t_windows.drop("label", 1).to_numpy(), t_windows["label"].to_numpy()
-    print(X[0])
-    X_new = SelectKBest(mutual_info_classif, k=15).fit_transform(X, y)
-    print(X_new)
+    x_train, y_train = t_windows.drop("label", 1).to_numpy(), t_windows["label"].to_numpy()
+    x_valid, y_valid = v_windows.drop("label", 1).to_numpy(), v_windows["label"].to_numpy()
+
+    selector = SelectKBest(mutual_info_classif, k=20)
+    selector.fit(x_train, y_train)
+    train = selector.transform(x_train)
+    valid = selector.transform(x_valid)
     print(100 * "-")
-    #svm_classifier(t_windows, v_windows)
+    svm_classifier(train, y_train, valid, y_valid)
+    perceptron_classifier(train, y_train, valid, y_valid)
+
+
