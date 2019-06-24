@@ -1,2 +1,4 @@
 /**/.idea
 /**/EMG_data
+/**/*.csv
+/**/__pycache__
