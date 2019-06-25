@@ -3,16 +3,13 @@ import sys
 import math
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 from time import time
 from matplotlib import pyplot as plt
-from sklearn import svm, metrics
-from sklearn.model_selection import GridSearchCV
-from sklearn.preprocessing import LabelBinarizer, StandardScaler
+from sklearn import metrics
+from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import SelectKBest, mutual_info_classif
 from scipy.stats import kurtosis, skew
-from classifiers import svm_classifier, perceptron_classifier, mlp_classifier
-
+from classifiers import svm_classifier, mlp_classifier
 
 
 def root_mean_square(data):
@@ -24,18 +21,22 @@ def root_mean_square(data):
     return root
 
 
-# def plot_data(subject):
-#     s1 = load_data([subject], path, empty_data)
-#     plt.figure()
-#     plt.suptitle("subject {}".format(subject), fontsize="x-large")
-#     plt.subplot(5, 1, 1)
-#     plt.plot(range(len(s1["class"])), s1["class"])
-#     for i in range(8):
-#         plt.subplot(5, 2, i + 3)
-#         c = "channel{}".format(i + 1)
-#         plt.plot(range(len(s1)), s1[c])
-#         plt.title(c)
-#     plt.subplots_adjust(hspace=1, wspace=0.35)
+def plot_data(subject):
+    path = "EMG_data/"
+    columns = ["channel1", "channel2", "channel3", "channel4", "channel5", "channel6", "channel7", "channel8", "class"]
+    empty_data = pd.DataFrame(columns=columns)
+    x_s, y_s = load_data([subject], path, empty_data)
+    plt.figure()
+    plt.suptitle("subject {}".format(subject), fontsize="x-large")
+    plt.subplot(5, 1, 1)
+    plt.plot(range(len(y_s)), y_s)
+    plt.title("class")
+    for i in range(8):
+        plt.subplot(5, 2, i + 3)
+        c = "channel{}".format(i + 1)
+        plt.plot(range(len(x_s)), x_s[c])
+        plt.title(c)
+    plt.subplots_adjust(hspace=1, wspace=0.35)
 
 
 def windows(data, width, step):
@@ -187,10 +188,7 @@ def load_and_save_csv(zeros=False, width=200, step=200):
         test_features.to_csv(test_name + "_without_zeros.csv", index=None, header=True)
 
 
-if __name__ == "__main__":
-    np.set_printoptions(threshold=sys.maxsize)
-    np.random.seed(42)
-
+def gesture_classifier_test():
     sizes_list = ["100", "200", "400"]
     print(100 * "-")
     print(100 * "-")
@@ -252,12 +250,15 @@ if __name__ == "__main__":
                 svm_classifier(train, y_train, valid, y_valid)
                 print(100 * "-")
 
+
+def pause_detector_test():
     print(100 * "-")
     print(100 * "-")
     print(100 * "-")
     print("pause vs gesture classifier")
-    for w in sizes_list:
-        for s in sizes_list[1:]:
+    sizes_list = ["100", "200", "400"]
+    for w in sizes_list[1:]:
+        for s in sizes_list:
             print(100 * '-')
             print("window width: {}".format(w))
             print("window step: {}".format(s))
@@ -311,3 +312,134 @@ if __name__ == "__main__":
                 svm_classifier(train, y_train, valid, y_valid)
                 print(100 * "-")
 
+
+def plot_confussion_matrix(confm, title="confussion_matrix", classes=range(1, 7)):
+
+    # Only use the labels that appear in the data
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(confm, interpolation='nearest', cmap=plt.cm.Blues)
+    ax.figure.colorbar(im, ax=ax)
+    # We want to show all ticks...
+    ax.set(xticks=np.arange(confm.shape[1]),
+           yticks=np.arange(confm.shape[0]),
+           # ... and label them with the respective list entries
+           xticklabels=classes, yticklabels=classes,
+           title=title,
+           ylabel='True label',
+           xlabel='Predicted label')
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    fmt = '.2f'
+    thresh = confm.max() / 2.
+    for i in range(confm.shape[0]):
+        for j in range(confm.shape[1]):
+            ax.text(j, i, format(confm[i, j], fmt),
+                    ha="center", va="center",
+                    color="white" if confm[i, j] > thresh else "black")
+    fig.tight_layout()
+
+
+if __name__ == "__main__":
+    np.set_printoptions(threshold=sys.maxsize)
+    np.random.seed(42)
+
+    print(100 * '-')
+    w = "400"
+    s = "100"
+    print("window width: {}".format(w))
+    print("window step: {}".format(s))
+    train_file = "train_features_" + w + "_" + s + "_without_zeros.csv"
+    test_file = "test_features_" + w + "_" + s + "_without_zeros.csv"
+
+    train_features = pd.read_csv(train_file, sep=",").to_numpy()
+    test_features = pd.read_csv(test_file, sep=",").to_numpy()
+
+    print(100 * '-')
+    print(36 * '-' + "Standardization of datasets" + 37 * '-')
+    t = time()
+    train_nc = train_features.shape[1] - 1
+    x_train = train_features[:, :train_nc]
+    y_train = train_features[:, train_nc]
+
+    test_nc = test_features.shape[1] - 1
+    x_test = test_features[:, :test_nc]
+    y_test = test_features[:, test_nc]
+
+    scaler = StandardScaler()
+    scaler.fit(x_train)
+    x_train = scaler.transform(x_train)
+    x_test = scaler.transform(x_test)
+    print("time: {:.2f}".format(time() - t))
+    print(100 * '-')
+    # print(44 * '-' + "value counts" + 44 * '-')
+    # print(train_features["label"].value_counts())
+    # print(100 * "-")
+
+    print(41 * '-' + "feature selection" + 42 * '-')
+
+    print("{} features".format(40))
+    selector = SelectKBest(mutual_info_classif, k=40)
+    selector.fit(x_train, y_train)
+    train = selector.transform(x_train)
+    test = selector.transform(x_test)
+    print(100 * "-")
+    print("MLP classifier")
+    _, predictions_gestures = mlp_classifier(train, y_train, test, y_test)
+    print(100 * "-")
+
+    print(100 * '-')
+    print("window width: {}".format(w))
+    print("window step: {}".format(s))
+    train_file = "train_features_" + w + "_" + s + "_with_zeros.csv"
+    test_file = "test_features_" + w + "_" + s + "_with_zeros.csv"
+
+    train_features_p = pd.read_csv(train_file, sep=",").to_numpy()
+    test_features_p = pd.read_csv(test_file, sep=",").to_numpy()
+
+    print(36 * '-' + "Standardization of datasets" + 37 * '-')
+    t = time()
+    train_nc_p = train_features_p.shape[1] - 1
+    x_train_p = train_features_p[:, :train_nc_p]
+    y_train_p = train_features_p[:, train_nc_p]
+
+    test_nc_p = test_features_p.shape[1] - 1
+    x_test_p = test_features_p[:, :test_nc_p]
+    y_test_p = test_features_p[:, test_nc_p]
+
+    scaler = StandardScaler()
+    scaler.fit(x_train_p)
+    x_train_p = scaler.transform(x_train_p)
+    x_test_p = scaler.transform(x_test_p)
+    print("time: {:.2f}".format(time() - t))
+    print(100 * '-')
+    # print(44 * '-' + "value counts" + 44 * '-')
+    # print(train_features["label"].value_counts())
+    # print(100 * "-")
+
+    print(41 * '-' + "feature selection" + 42 * '-')
+
+    print("{} features".format(64))
+    selector = SelectKBest(mutual_info_classif, k=64)
+    selector.fit(x_train_p, y_train_p)
+    train_p = selector.transform(x_train_p)
+    test_p = selector.transform(x_test_p)
+    print(100 * "-")
+    print("MLP classifier")
+    _, predictions_pauses = mlp_classifier(train_p, y_train_p, test_p, y_test_p)
+    print(100 * "-")
+
+    predictions_both = np.multiply(predictions_gestures, predictions_pauses)
+    confm = metrics.confusion_matrix(y_test_p, predictions_both)
+    confm_diagonal = np.diag(confm)
+    accuracy = confm_diagonal.sum() / confm.sum()
+    print(100 * "-")
+    print(confm)
+    print("Accuracy: {:.4f}".format(accuracy))
+    print(100 * "-")
+    plot_confussion_matrix(confm, title="both classifiers", classes=range(2))
+    plt.show()
