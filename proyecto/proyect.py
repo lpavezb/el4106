@@ -194,6 +194,14 @@ def gesture_classifier_test():
     print(100 * "-")
     print(100 * "-")
     print("gesture classifier")
+    svm_results = {}
+    mlp_results = {}
+    ks = [20, 30, 40, 50, 64]
+    for k in ks:
+        svm_results[k] = {}
+        mlp_results[k] = {}
+    size_w = len(sizes_list)
+    size_s = len(sizes_list)
     for w in sizes_list:
         for s in sizes_list:
             print(100 * '-')
@@ -201,11 +209,9 @@ def gesture_classifier_test():
             print("window step: {}".format(s))
             train_file = "train_features_" + w + "_" + s + "_without_zeros.csv"
             validation_file = "validation_features_" + w + "_" + s + "_without_zeros.csv"
-            test_file = "test_features_" + w + "_" + s + "_without_zeros.csv"
 
             train_features = pd.read_csv(train_file, sep=",").to_numpy()
             validation_features = pd.read_csv(validation_file, sep=",").to_numpy()
-            test_features = pd.read_csv(test_file, sep=",").to_numpy()
 
             print(100 * '-')
             print(36 * '-' + "Standardization of datasets" + 37 * '-')
@@ -218,37 +224,29 @@ def gesture_classifier_test():
             x_valid = validation_features[:, :valid_nc]
             y_valid = validation_features[:, valid_nc]
 
-            test_nc = test_features.shape[1] - 1
-            x_test = test_features[:, :test_nc]
-            y_test = test_features[:, test_nc]
-
             scaler = StandardScaler()
             scaler.fit(x_train)
             x_train = scaler.transform(x_train)
             x_valid = scaler.transform(x_valid)
-            x_test = scaler.transform(x_test)
             print("time: {:.2f}".format(time() - t))
             print(100 * '-')
-            # print(44 * '-' + "value counts" + 44 * '-')
-            # print(train_features["label"].value_counts())
-            # print(100 * "-")
 
             print(41 * '-' + "feature selection" + 42 * '-')
-            ks = [20, 30, 40, 50, 64]
+
             for k in ks:
                 print("{} features".format(k))
                 selector = SelectKBest(mutual_info_classif, k=k)
                 selector.fit(x_train, y_train)
                 train = selector.transform(x_train)
                 valid = selector.transform(x_valid)
-                test = selector.transform(x_test)
                 print(100 * "-")
                 print("MLP classifier")
-                mlp_classifier(train, y_train, valid, y_valid)
+                mlp_results[k][w + 'x' + s] = int(round(mlp_classifier(train, y_train, valid, y_valid)[0] * 100))
                 print(100 * "-")
                 print("SVM classifier")
-                svm_classifier(train, y_train, valid, y_valid)
+                svm_results[k][w + 'x' + s] = int(round(svm_classifier(train, y_train, valid, y_valid)[0] * 100))
                 print(100 * "-")
+    return [svm_results, mlp_results], [size_w, size_s]
 
 
 def pause_detector_test():
@@ -257,6 +255,14 @@ def pause_detector_test():
     print(100 * "-")
     print("pause vs gesture classifier")
     sizes_list = ["100", "200", "400"]
+    svm_results = {}
+    mlp_results = {}
+    ks = [20, 30, 40, 50, 64]
+    for k in ks:
+        svm_results[k] = {}
+        mlp_results[k] = {}
+    size_w = len(sizes_list[1:])
+    size_s = len(sizes_list)
     for w in sizes_list[1:]:
         for s in sizes_list:
             print(100 * '-')
@@ -264,11 +270,9 @@ def pause_detector_test():
             print("window step: {}".format(s))
             train_file = "train_features_" + w + "_" + s + "_with_zeros.csv"
             validation_file = "validation_features_" + w + "_" + s + "_with_zeros.csv"
-            test_file = "test_features_" + w + "_" + s + "_with_zeros.csv"
 
             train_features = pd.read_csv(train_file, sep=",").to_numpy()
             validation_features = pd.read_csv(validation_file, sep=",").to_numpy()
-            test_features = pd.read_csv(test_file, sep=",").to_numpy()
 
             print(36 * '-' + "Standardization of datasets" + 37 * '-')
             t = time()
@@ -280,37 +284,29 @@ def pause_detector_test():
             x_valid = validation_features[:, :valid_nc]
             y_valid = validation_features[:, valid_nc]
 
-            test_nc = test_features.shape[1] - 1
-            x_test = test_features[:, :test_nc]
-            y_test = test_features[:, test_nc]
-
             scaler = StandardScaler()
             scaler.fit(x_train)
             x_train = scaler.transform(x_train)
             x_valid = scaler.transform(x_valid)
-            x_test = scaler.transform(x_test)
             print("time: {:.2f}".format(time() - t))
             print(100 * '-')
-            # print(44 * '-' + "value counts" + 44 * '-')
-            # print(train_features["label"].value_counts())
-            # print(100 * "-")
 
             print(41 * '-' + "feature selection" + 42 * '-')
-            ks = [20, 30, 40, 50, 64]
             for k in ks:
+
                 print("{} features".format(k))
                 selector = SelectKBest(mutual_info_classif, k=k)
                 selector.fit(x_train, y_train)
                 train = selector.transform(x_train)
                 valid = selector.transform(x_valid)
-                test = selector.transform(x_test)
                 print(100 * "-")
                 print("MLP classifier")
-                mlp_classifier(train, y_train, valid, y_valid)
+                mlp_results[k][w + 'x' + s] = int(round(mlp_classifier(train, y_train, valid, y_valid)[0] * 100))
                 print(100 * "-")
                 print("SVM classifier")
-                svm_classifier(train, y_train, valid, y_valid)
+                svm_results[k][w + 'x' + s] = int(round(svm_classifier(train, y_train, valid, y_valid)[0] * 100))
                 print(100 * "-")
+    return [svm_results, mlp_results], [size_w, size_s]
 
 
 def plot_confussion_matrix(confm, title="confussion_matrix", classes=range(1, 7)):
@@ -344,102 +340,33 @@ def plot_confussion_matrix(confm, title="confussion_matrix", classes=range(1, 7)
     fig.tight_layout()
 
 
+def print_results(accuracy_dict, size):
+    rows, cols = size
+    ks = list(accuracy_dict.keys())
+    ks.sort()
+    windows = list(accuracy_dict[ks[0]].keys())
+    windows.sort()
+    for k in ks:
+        rows_list = []
+        s = 0
+        for i in range(rows):
+            rows_list.append(windows[s:s+cols])
+            s += cols
+        print(100 * '-')
+        print("k = {}".format(k))
+        print("--- | 100 200 400")
+        for r in range(rows):
+            r_name = (rows_list[r][0].split("x"))[0]
+            print(r_name + " | " + "  ".join(str(accuracy_dict[k][x]) for x in rows_list[r]))
+
+    print(100 * '-')
+
+
 if __name__ == "__main__":
     np.set_printoptions(threshold=sys.maxsize)
     np.random.seed(42)
 
-    print(100 * '-')
-    w = "400"
-    s = "100"
-    print("window width: {}".format(w))
-    print("window step: {}".format(s))
-    train_file = "train_features_" + w + "_" + s + "_without_zeros.csv"
-    test_file = "test_features_" + w + "_" + s + "_without_zeros.csv"
-
-    train_features = pd.read_csv(train_file, sep=",").to_numpy()
-    test_features = pd.read_csv(test_file, sep=",").to_numpy()
-
-    print(100 * '-')
-    print(36 * '-' + "Standardization of datasets" + 37 * '-')
-    t = time()
-    train_nc = train_features.shape[1] - 1
-    x_train = train_features[:, :train_nc]
-    y_train = train_features[:, train_nc]
-
-    test_nc = test_features.shape[1] - 1
-    x_test = test_features[:, :test_nc]
-    y_test = test_features[:, test_nc]
-
-    scaler = StandardScaler()
-    scaler.fit(x_train)
-    x_train = scaler.transform(x_train)
-    x_test = scaler.transform(x_test)
-    print("time: {:.2f}".format(time() - t))
-    print(100 * '-')
-    # print(44 * '-' + "value counts" + 44 * '-')
-    # print(train_features["label"].value_counts())
-    # print(100 * "-")
-
-    print(41 * '-' + "feature selection" + 42 * '-')
-
-    print("{} features".format(40))
-    selector = SelectKBest(mutual_info_classif, k=40)
-    selector.fit(x_train, y_train)
-    train = selector.transform(x_train)
-    test = selector.transform(x_test)
-    print(100 * "-")
-    print("MLP classifier")
-    _, predictions_gestures = mlp_classifier(train, y_train, test, y_test)
-    print(100 * "-")
-
-    print(100 * '-')
-    print("window width: {}".format(w))
-    print("window step: {}".format(s))
-    train_file = "train_features_" + w + "_" + s + "_with_zeros.csv"
-    test_file = "test_features_" + w + "_" + s + "_with_zeros.csv"
-
-    train_features_p = pd.read_csv(train_file, sep=",").to_numpy()
-    test_features_p = pd.read_csv(test_file, sep=",").to_numpy()
-
-    print(36 * '-' + "Standardization of datasets" + 37 * '-')
-    t = time()
-    train_nc_p = train_features_p.shape[1] - 1
-    x_train_p = train_features_p[:, :train_nc_p]
-    y_train_p = train_features_p[:, train_nc_p]
-
-    test_nc_p = test_features_p.shape[1] - 1
-    x_test_p = test_features_p[:, :test_nc_p]
-    y_test_p = test_features_p[:, test_nc_p]
-
-    scaler = StandardScaler()
-    scaler.fit(x_train_p)
-    x_train_p = scaler.transform(x_train_p)
-    x_test_p = scaler.transform(x_test_p)
-    print("time: {:.2f}".format(time() - t))
-    print(100 * '-')
-    # print(44 * '-' + "value counts" + 44 * '-')
-    # print(train_features["label"].value_counts())
-    # print(100 * "-")
-
-    print(41 * '-' + "feature selection" + 42 * '-')
-
-    print("{} features".format(64))
-    selector = SelectKBest(mutual_info_classif, k=64)
-    selector.fit(x_train_p, y_train_p)
-    train_p = selector.transform(x_train_p)
-    test_p = selector.transform(x_test_p)
-    print(100 * "-")
-    print("MLP classifier")
-    _, predictions_pauses = mlp_classifier(train_p, y_train_p, test_p, y_test_p)
-    print(100 * "-")
-
-    predictions_both = np.multiply(predictions_gestures, predictions_pauses)
-    confm = metrics.confusion_matrix(y_test_p, predictions_both)
-    confm_diagonal = np.diag(confm)
-    accuracy = confm_diagonal.sum() / confm.sum()
-    print(100 * "-")
-    print(confm)
-    print("Accuracy: {:.4f}".format(accuracy))
-    print(100 * "-")
-    plot_confussion_matrix(confm, title="both classifiers", classes=range(2))
-    plt.show()
+    accuracy_results, size = gesture_classifier_test()
+    print_results(accuracy_results[0], size)
+    print(100 * '#')
+    print_results(accuracy_results[1], size)
