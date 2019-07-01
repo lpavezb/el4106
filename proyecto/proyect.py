@@ -41,16 +41,13 @@ def plot_data(subject):
 
 def windows(data, width, step):
     start = 0
-    windows_without_zeros = []
-    windows_with_zeros = []
+    windows_list = []
     while (start + width) < len(data):
         data_slice = data[start:start + width].reset_index()
         if data_slice["class"][0] == data_slice["class"][width - 1]:
-            if data_slice["class"][0] != 0:
-                windows_without_zeros.append(data_slice)
-            windows_with_zeros.append(data_slice)
+            windows_list.append(data_slice)
         start += step
-    return windows_without_zeros, windows_with_zeros
+    return windows_list
 
 
 def load_data(subjects, path, data, drop7=True):
@@ -77,9 +74,7 @@ def get_features(window):
         features["range" + str(i)] = max_value - min_value
         features["RMS" + str(i)] = root_mean_square(window["channel" + str(i)])
         features["skew" + str(i)] = skew(window["channel" + str(i)])
-        # features["AvEnt" + str(i)] = average_entropy(window["channel" + str(i)])
         features["kurtosis" + str(i)] = kurtosis(window["channel" + str(i)])
-
     features["label"] = window["class"][0]
     return features
 
@@ -120,21 +115,18 @@ def load_and_save_csv(zeros=False, width=200, step=200):
     train_valid = pd.DataFrame(columns=columns, data=train_valid_values)
     test = pd.DataFrame(columns=columns, data=test_values)
 
-    train_valid_windows_without_zeros, train_valid_windows_with_zeros = windows(train_valid, width, step)
-    test_windows_without_zeros, test_windows_with_zeros = windows(test, width, step)
+    train_valid_windows_list = windows(train_valid, width, step)
+    test_windows_list = windows(test, width, step)
 
-    if not zeros:
-        np.random.shuffle(train_valid_windows_without_zeros)
-        train_len = int(len(train_valid_windows_without_zeros) * 0.8)
-        train_windows = train_valid_windows_without_zeros[:train_len]
-        valid_windows = train_valid_windows_without_zeros[train_len:]
-        test_windows = test_windows_without_zeros
-    else:
-        np.random.shuffle(train_valid_windows_with_zeros)
-        train_len = int(len(train_valid_windows_with_zeros) * 0.8)
-        train_windows = train_valid_windows_with_zeros[:train_len]
-        valid_windows = train_valid_windows_with_zeros[train_len:]
-        test_windows = test_windows_with_zeros
+    if width == 100:
+        train_valid_windows_list = [x for x in train_valid_windows_list if x["class"][0] != 0]
+        test_windows_list = [x for x in test_windows_list if x["class"][0] != 0]
+
+    np.random.shuffle(train_valid_windows_list)
+    train_len = int(len(train_valid_windows_list) * 0.8)
+    train_windows = train_valid_windows_list[:train_len]
+    valid_windows = train_valid_windows_list[train_len:]
+    test_windows = test_windows_list
 
     print("train_windows: {}".format(len(train_windows)))
     print("validation_windows: {}".format(len(valid_windows)))
@@ -172,20 +164,16 @@ def load_and_save_csv(zeros=False, width=200, step=200):
         window_features = get_features(window)
         test_features = test_features.append(window_features, ignore_index=True)
 
-    train_name = "train_features_" + str(width) + "_" + str(step)
-    validation_name = "validation_features_" + str(width) + "_" + str(step)
-    test_name = "test_features_" + str(width) + "_" + str(step)
-    if zeros:
-        train_features.loc[train_features['label'] != 0, 'label'] = 1
-        validation_features.loc[validation_features['label'] != 0, 'label'] = 1
-        test_features.loc[test_features['label'] != 0, 'label'] = 1
-        train_features.to_csv(train_name + "_with_zeros.csv", index=None, header=True)
-        validation_features.to_csv(validation_name + "_with_zeros.csv", index=None, header=True)
-        test_features.to_csv(test_name + "_with_zeros.csv", index=None, header=True)
-    else:
-        train_features.to_csv(train_name + "_without_zeros.csv", index=None, header=True)
-        validation_features.to_csv(validation_name + "_without_zeros.csv", index=None, header=True)
-        test_features.to_csv(test_name + "_without_zeros.csv", index=None, header=True)
+    train_name = "train_features_" + str(width) + "_" + str(step) + ".csv"
+    validation_name = "validation_features_" + str(width) + "_" + str(step) + ".csv"
+    test_name = "test_features_" + str(width) + "_" + str(step) + ".csv"
+
+    # train_features = train_features.loc[train_features['label'] != 0, 'label']
+    # validation_features = validation_features.loc[validation_features['label'] != 0, 'label']
+    # test_features = test_features.loc[test_features['label'] != 0, 'label']
+    train_features.to_csv(train_name, index=None, header=True)
+    validation_features.to_csv(validation_name, index=None, header=True)
+    test_features.to_csv(test_name, index=None, header=True)
 
 
 def gesture_classifier_test():
@@ -207,11 +195,13 @@ def gesture_classifier_test():
             print(100 * '-')
             print("window width: {}".format(w))
             print("window step: {}".format(s))
-            train_file = "train_features_" + w + "_" + s + "_without_zeros.csv"
-            validation_file = "validation_features_" + w + "_" + s + "_without_zeros.csv"
+            train_file = "train_features_" + w + "_" + s + ".csv"
+            train_features = pd.read_csv(train_file, sep=",")
+            train_features = train_features.loc[train_features['label'] != 0].to_numpy()
 
-            train_features = pd.read_csv(train_file, sep=",").to_numpy()
-            validation_features = pd.read_csv(validation_file, sep=",").to_numpy()
+            validation_file = "validation_features_" + w + "_" + s + ".csv"
+            validation_features = pd.read_csv(validation_file, sep=",")
+            validation_features = validation_features.loc[validation_features['label'] != 0].to_numpy()
 
             print(100 * '-')
             print(36 * '-' + "Standardization of datasets" + 37 * '-')
@@ -268,11 +258,15 @@ def pause_detector_test():
             print(100 * '-')
             print("window width: {}".format(w))
             print("window step: {}".format(s))
-            train_file = "train_features_" + w + "_" + s + "_with_zeros.csv"
-            validation_file = "validation_features_" + w + "_" + s + "_with_zeros.csv"
+            train_file = "train_features_" + w + "_" + s + ".csv"
+            train_features = pd.read_csv(train_file, sep=",")
+            train_features.loc[train_features['label'] != 0, 'label'] = 1
+            train_features = train_features.to_numpy()
 
-            train_features = pd.read_csv(train_file, sep=",").to_numpy()
-            validation_features = pd.read_csv(validation_file, sep=",").to_numpy()
+            validation_file = "validation_features_" + w + "_" + s + ".csv"
+            validation_features = pd.read_csv(validation_file, sep=",")
+            validation_features.loc[validation_features['label'] != 0, 'label'] = 1
+            validation_features = validation_features.to_numpy()
 
             print(36 * '-' + "Standardization of datasets" + 37 * '-')
             t = time()
@@ -362,11 +356,98 @@ def print_results(accuracy_dict, size):
     print(100 * '-')
 
 
-if __name__ == "__main__":
+def main():
     np.set_printoptions(threshold=sys.maxsize)
     np.random.seed(42)
+    w = '100'
+    s = '100'
+    print(100 * '-')
+    print("window width: {}".format(w))
+    print("window step: {}".format(s))
 
-    accuracy_results, size = gesture_classifier_test()
-    print_results(accuracy_results[0], size)
-    print(100 * '#')
-    print_results(accuracy_results[1], size)
+    train_file = "train_features_" + w + "_" + s + ".csv"
+    train_features = pd.read_csv(train_file, sep=",")
+    train_features = train_features.loc[train_features['label'] != 0].to_numpy()
+
+    validation_file = "validation_features_" + w + "_" + s + ".csv"
+    validation_features = pd.read_csv(validation_file, sep=",")
+    validation_features = validation_features.loc[validation_features['label'] != 0].to_numpy()
+    print(36 * '-' + "Standardization of datasets" + 37 * '-')
+    t = time()
+    train_nc = train_features.shape[1] - 1
+    x_train = train_features[:, :train_nc]
+    y_train = train_features[:, train_nc]
+
+    valid_nc = validation_features.shape[1] - 1
+    x_valid = validation_features[:, :valid_nc]
+    y_valid = validation_features[:, valid_nc]
+
+    scaler = StandardScaler()
+    scaler.fit(x_train)
+    x_train = scaler.transform(x_train)
+    x_valid = scaler.transform(x_valid)
+    print("time: {:.2f}".format(time() - t))
+    print(100 * '-')
+
+    print(41 * '-' + "feature selection" + 42 * '-')
+    k=40
+    print("{} features".format(k))
+    selector = SelectKBest(mutual_info_classif, k=k)
+    selector.fit(x_train, y_train)
+    train = selector.transform(x_train)
+    valid = selector.transform(x_valid)
+    print(100 * "-")
+    print("MLP classifier")
+    acc = int(round(mlp_classifier(train, y_train, valid, y_valid)[0]*100))
+    print(100 * "-")
+    print(acc)
+    print(100 * "-")
+
+    train_file = "train_features_" + w + "_" + s + ".csv"
+    train_features = pd.read_csv(train_file, sep=",")
+    train_features.loc[train_features['label'] != 0, 'label'] = 1
+    train_features = train_features.to_numpy()
+
+    validation_file = "validation_features_" + w + "_" + s + ".csv"
+    validation_features = pd.read_csv(validation_file, sep=",")
+    validation_features.loc[validation_features['label'] != 0, 'label'] = 1
+    validation_features = validation_features.to_numpy()
+
+    print(36 * '-' + "Standardization of datasets" + 37 * '-')
+    t = time()
+    train_nc = train_features.shape[1] - 1
+    x_train = train_features[:, :train_nc]
+    y_train = train_features[:, train_nc]
+
+    valid_nc = validation_features.shape[1] - 1
+    x_valid = validation_features[:, :valid_nc]
+    y_valid = validation_features[:, valid_nc]
+
+    scaler = StandardScaler()
+    scaler.fit(x_train)
+    x_train = scaler.transform(x_train)
+    x_valid = scaler.transform(x_valid)
+    print("time: {:.2f}".format(time() - t))
+    print(100 * '-')
+    k = 64
+    print(41 * '-' + "feature selection" + 42 * '-')
+    print("{} features".format(k))
+    selector = SelectKBest(mutual_info_classif, k=k)
+    selector.fit(x_train, y_train)
+    train = selector.transform(x_train)
+    valid = selector.transform(x_valid)
+    print(100 * "-")
+    print("MLP classifier")
+    acc = int(round(mlp_classifier(train, y_train, valid, y_valid)[0] * 100))
+    print(100 * "-")
+    print(acc)
+    print(100 * "-")
+
+    # accuracy_results, size = gesture_classifier_test()
+    # print_results(accuracy_results[0], size)
+    # print(100 * '#')
+    # print_results(accuracy_results[1], size)
+
+
+if __name__ == "__main__":
+    main()
