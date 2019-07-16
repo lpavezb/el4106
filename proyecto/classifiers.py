@@ -20,13 +20,13 @@ def svm_classifier(x_train, y_train, x_data, y_data):
     accuracy = confm_diagonal.sum() / confm.sum()
     t2 = time()
     print(100 * "-")
-    # print(confm)
+    print(confm)
     print("Accuracy: {:.4f}".format(accuracy))
     print("training time = {:.2f}".format(t2 - t1))
     print(100 * "-")
-    # print("classifier: {}".format(classifier))
+    print("classifier: {}".format(classifier))
     print(100 * "-")
-    return [accuracy, predictions]
+    return [accuracy, classifier]
 
 
 def mlp_classifier(x_train, y_train, x_data, y_data):
@@ -40,10 +40,10 @@ def mlp_classifier(x_train, y_train, x_data, y_data):
     accuracy = confm_diagonal.sum() / confm.sum()
     t2 = time()
     print(100 * "-")
-    # print(confm)
+    print(confm)
     print("Accuracy: {:.4f}".format(accuracy))
     print("training time = {:.2f}".format(t2 - t1))
     print(100 * "-")
-    # print("classifier: {}".format(classifier))
+    print("classifier: {}".format(classifier))
     print(100 * "-")
-    return [accuracy, predictions]
+    return [accuracy, classifier]

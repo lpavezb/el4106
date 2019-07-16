@@ -1,28 +1,23 @@
-EMG Pattern Database
+Proyecto clasificador de gestos
+Lukas Pavez
 
-For recording patterns, we used a MYO Thalmic bracelet worn on a user’s forearm, and a PC with a Bluetooth receiver. The bracelet is equipped with eight sensors equally spaced around the forearm that simultaneously acquire myographic signals. The signals are sent through a Bluetooth interface to a PC. 
-We present raw EMG data for 36 subjects while they performed series of static hand gestures.The subject performs two series, each of which consists of six (seven) basic gestures. Each gesture was performed for 3 seconds with a pause of 3 seconds between gestures.
-
-
-Description of raw_data _*** file
-Each file consist of 10 columns:
-1) Time - time in ms;
-2-9) Channel - eightEMG channels of MYO Thalmic bracelet;
-10) Class  –thelabel of gestures: 
-0 - unmarked data,
-1 - hand at rest, 
-2 - hand clenched in a fist, 
-3 - wrist flexion,
-4 – wrist extension,
-5 – radial deviations,
-6 - ulnar deviations,
-7 - extended palm (the gesture was not performed by all subjects).
+Configuraciones previas:
+-Se debe descomprimir EMG_data.zip, y debe quedar la carpeta EMG_data en la misma carpeta que el programa proyect.py y debe tener ese nombre.
+-Dentro de la carpeta EMG_data solo deben estar las carpetas de las 36 personas, si se encuentra el README.txt que viene con el archivo original se debe borrar o dejar en otra carpeta.
+-El modulo classifiers.py se debe encontrar en la misma carpeta que el programa proyect.py
+-(Opcional) Descomprimir features_data.zip y dejar los archivos en la misma carpeta que el programa proyect.py
 
 
+Correr el programa proyect.py:
+-Primero se deben generar los datasets correspondientes a las caracteristicas de las ventanas de los datos, para esto debe descomentar la linea generate_csvs() en la funcion main() que se encuentra al final del programa, ESTO PUEDE TOMAR MUCHO TIEMPO (hasta 1 hora), este paso se puede saltar si se realizo el paso opcional de las configuraciones previas.
+-En la función main() puede descomentar cualquiera de las 3 opciones para correr el programa:
+--run_tests_and_print_results() corre 150 tests correspondientes a las pruebas con los conjuntos de validacion, se imprimen los resultados en la pantalla. Puede demorarse un tiempo en correr.
+--classifiers_test() corre las pruebas con los mejores parametros obtenidos para el clasificador de gestos y el detector de pausas, guarda 2 figuras en la carpeta del programa con las matrices de confusion generadas. Se demora aproximadamente 1 minuto y medio.
+--both_classifiers_test() corre la prueba de ambos clasificadores juntos, guarda 1 figura en la carpeta del programa con la matriz de confusion generada. Se demora aproximadamente 1 minuto y medio.
 
 
-Relevant Paper:
-Lobov S., Krilova N., Kastalskiy I., Kazantsev V., Makarov V.A. Latent Factors Limiting the Performance of sEMG-Interfaces. Sensors. 2018;18(4):1122. doi: 10.3390/s18041122
-
-
-Supported by the Ministry of Education and Science of the Russian Federation in the framework of megagrant allocation in accordance with the decree of the government of the Russian Federation №220, project № 14.Y26.31.0022 
+Version de python: 3.5
+Version de sklearn: 0.21.0
+Version de numpy: 1.16.3
+Version de pandas: 0.24.2
+Version de scipy: 1.2.1
